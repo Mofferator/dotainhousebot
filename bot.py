@@ -1,6 +1,11 @@
 import discord
 import playerdb
 import player
+import os
+from dotenv import load_dotenv
+
+load_dotenv('.env')
+TOKEN = os.getenv("TOKEN")
 
 client = discord.Client()
 
@@ -95,4 +100,4 @@ def steamURL(sid):
     return "https://steamcommunity.com/profiles/" + str(sid)
 
 
-client.run('OTIzNTQ2Mzg1NDM1OTgzODcy.YcRlmA.ztc9w45Vz8mMD2Z8NVg-HG0TMSY')
+client.run(TOKEN)
