@@ -4,7 +4,6 @@ import player
 
 client = discord.Client()
 
-currentJoinMessage = 0
 
 @client.event
 async def on_ready():
@@ -25,30 +24,58 @@ async def on_message(message):
     if message.content.startswith('$addplayers'):
         sent = await message.channel.send('React to this message to be added to the inhouse role')
         playerdb.addGuildTable(message.guild.id)
-        global currentJoinMessage
-        currentJoinMessage = sent.id
     
     if message.content.startswith('$addme'):
         reply = addMember(message)
+        member = message.author
+        inhouserRole = playerdb.getSetting(message.guild.id, "role")
+        role = discord.utils.get(message.author.guild.roles, name = inhouserRole)
         await message.channel.send(reply)
+        await member.add_roles(role)
 
     if message.content.startswith('$removeme'):
         reply = removeMember(message)
+        member = message.author
+        inhouserRole = playerdb.getSetting(message.guild.id, "role")
+        role = discord.utils.get(message.author.guild.roles, name = inhouserRole)
         await message.channel.send(reply)
+        await member.remove_roles(role)
 
     if message.content.startswith('$steam'):
         results = playerdb.getPlayer(message.author.id, message.guild.id)
         if results != []:
-            reply = results[0][2]
+            reply = steamURL(results[0][2])
         else:
             reply = "Player not found"
         await message.channel.send(reply)
 
+    if message.content.startswith("$startinhouse"):
+        leagueId = playerdb.getSetting(message.guild.id, "leagueId")
+        if leagueId == 0:
+            await message.channel.send("No league currently configured for this server...")
+        elif leagueId == -1:
+            embed=discord.Embed(title="Inhouse Starting...", description="React to this message with a checkmark to join")
+            await message.channel.send(embed=embed)
+        else:
+            embed=discord.Embed(title="Inhouse Starting for league: {}...".format(leagueId), description="React to this message with a checkmark to join")
+            await message.channel.send(embed=embed)
+        
+    if message.content.startswith("$setleague"):
+        userInput = message.content.removeprefix("$setleague ")
+        playerdb.changeSetting(message.guild.id, "leagueId", userInput)
+        leagueId = playerdb.getSetting(message.guild.id, "leagueId")
+        await message.channel.send("League set to {}".format(leagueId))
+
+    if message.content.startswith("$setrole"):
+        userInput = message.content.removeprefix("$setrole ")
+        playerdb.changeSetting(message.guild.id, "role", userInput)
+        role = playerdb.getSetting(message.guild.id, "role")
+        await message.channel.send("Role set to {}".format(role))
+
+
 @client.event
 async def on_raw_reaction_add(payload):
-    message_id = payload.message_id
-    if message_id == currentJoinMessage:
-        addMember(payload)
+    pass
 
 def addMember(m):
     uid = m.author.id
@@ -65,6 +92,7 @@ def removeMember(m):
     return playerdb.removePlayer(uid, gid, member)
 
 def steamURL(sid):
-    return "https://steamcommunity.com/id/" + str(sid)
+    return "https://steamcommunity.com/profiles/" + str(sid)
+
 
 client.run('OTIzNTQ2Mzg1NDM1OTgzODcy.YcRlmA.ztc9w45Vz8mMD2Z8NVg-HG0TMSY')
