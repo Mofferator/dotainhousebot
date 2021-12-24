@@ -53,7 +53,7 @@ async def on_message(message):
             reply = "Player not found"
         await message.channel.send(reply)
 
-    if message.content.startswith("$startinhouse"):
+    if message.content.startswith("$createinhouse"):
         startmsg = 0
         leagueId = playerdb.getSetting(message.guild.id, "leagueId")
         if leagueId == 0:
@@ -79,6 +79,25 @@ async def on_message(message):
         playerdb.changeSetting(message.guild.id, "role", userInput)
         role = playerdb.getSetting(message.guild.id, "role")
         await message.channel.send("Role set to {}".format(role))
+
+    if message.content.startswith("$startinhouse"):
+        channel = message.channel
+        joinMessageId = playerdb.getSetting(message.guild.id, "currentJoinId")
+        joinMessage = await channel.fetch_message(joinMessageId)
+        listOfReactions = joinMessage.reactions # get all reactions from inhouse creation message
+        checkReaction = 0
+        for reaction in listOfReactions:
+            if reaction.emoji == '✅': # find only the checkmark reactions
+                checkReaction = reaction
+        users = await checkReaction.users().flatten()
+        users.remove(client.user) # remove bot from list of reactors
+        for user in users:
+            print(user)
+        if len(users) < 10:
+            await message.channel.send("Not enough players for an inhouse, please add {} more".format(10 - len(users)))
+        if len(users) > 10:
+            await message.channel.send("Too many players for an inhouse, please remove {} players".format(len(users) - 10))
+        
 
 
 @client.event
