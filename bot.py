@@ -9,7 +9,6 @@ TOKEN = os.getenv("TOKEN")
 
 client = discord.Client()
 
-
 @client.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(client))
@@ -55,15 +54,19 @@ async def on_message(message):
         await message.channel.send(reply)
 
     if message.content.startswith("$startinhouse"):
+        startmsg = 0
         leagueId = playerdb.getSetting(message.guild.id, "leagueId")
         if leagueId == 0:
             await message.channel.send("No league currently configured for this server...")
         elif leagueId == -1:
             embed=discord.Embed(title="Inhouse Starting...", description="React to this message with a checkmark to join")
-            await message.channel.send(embed=embed)
+            startmsg = await message.channel.send(embed=embed)
         else:
             embed=discord.Embed(title="Inhouse Starting for league: {}...".format(leagueId), description="React to this message with a checkmark to join")
-            await message.channel.send(embed=embed)
+            startmsg = await message.channel.send(embed=embed)
+        if startmsg != 0:
+            playerdb.changeSetting(message.guild.id, "currentJoinId", startmsg.id)
+            await startmsg.add_reaction('✅')
         
     if message.content.startswith("$setleague"):
         userInput = message.content.removeprefix("$setleague ")
@@ -80,7 +83,16 @@ async def on_message(message):
 
 @client.event
 async def on_raw_reaction_add(payload):
-    pass
+    mid = payload.message_id
+    gid = payload.guild_id
+    if mid == playerdb.getSetting(gid, "currentJoinId") and payload.member != client.user:
+        if payload.emoji.name == '✅':
+            print("User {} reacted".format(payload.member.name))
+        else:
+            print(payload.emoji.name)
+            print(payload.event_type)
+            
+
 
 def addMember(m):
     uid = m.author.id
