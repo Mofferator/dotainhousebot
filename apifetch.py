@@ -12,5 +12,8 @@ def getplayermmr(steamid):
     realmmr = mmr * 67
     return realmmr
 
+
+
 if __name__ == "__main__":
-    print(getplayermmr(108305168))
+    testId = 108305168
+    print(getplayermmr(testId))

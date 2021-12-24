@@ -1,6 +1,7 @@
 import discord
+from discord import team
 import playerdb
-import player
+from player import Player
 import os
 from dotenv import load_dotenv
 
@@ -95,8 +96,16 @@ async def on_message(message):
             print(user)
         if len(users) < 10:
             await message.channel.send("Not enough players for an inhouse, please add {} more".format(10 - len(users)))
-        if len(users) > 10:
+        elif len(users) > 10:
             await message.channel.send("Too many players for an inhouse, please remove {} players".format(len(users) - 10))
+        else:
+            import teamGeneration
+            listOfPlayers = []
+            for user in users:
+                listOfPlayers.append(userToPlayer(user.id, message.guild.id))
+            tl = teamGeneration.genteamlist(users)
+            reply = teamGeneration.formatTeams(tl[0])
+            await message.channel.send()
         
 
 
@@ -118,8 +127,7 @@ def addMember(m):
     sid = m.content.removeprefix("$addme ")
     member = m.author.name
     guild_id = m.guild.id
-    p = player.Player(uid, sid, member, guild_id)
-    return p.add()
+    return playerdb.addPlayer(uid, sid, member, guild_id)
 
 def removeMember(m):
     uid = m.author.id
@@ -130,5 +138,12 @@ def removeMember(m):
 def steamURL(sid):
     return "https://steamcommunity.com/profiles/" + str(sid)
 
+#converts a discord user object to a player object
+def userToPlayer(user_id, guild_id):
+    player = playerdb.getPlayer(user_id, guild_id)[0]
+    steam_id = player[2]
+    member = player[1]
+    p = Player(user_id, steam_id, member, guild_id)
+    return p
 
 client.run(TOKEN)

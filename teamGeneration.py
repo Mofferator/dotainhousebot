@@ -71,12 +71,12 @@ def printTeamList(listOfTeams):
         t2mmr = getTeamMMR(teamlist[1])
         print("Team 1 MMR avg = {}\t\tTeam 2 MMR avg = {}".format(t1mmr, t2mmr))
 
-def printTeams(teamlist):
+def formatTeams(teamlist):
     team1 = teamlist[0]
     team2 = teamlist[1]
     print("Team1:\t\t\t\tTeam2:\n")
     for i in range(5):
-        print("{}\t{}\t{}\t{}".format(team1[i].member, team1[i].mmr, team2[i].member, team2[i].mmr))
+        return "{}\t{}\t{}\t{}".format(team1[i].member, team1[i].mmr, team2[i].member, team2[i].mmr)
 
 def genteamlist(pool):
     poolsize = len(pool)
