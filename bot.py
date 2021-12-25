@@ -114,7 +114,7 @@ async def on_message(message):
                 listOfPlayers.append(userToPlayer(user.id, message.guild.id))
             tl = teamGeneration.genteamlist(users)
             reply = teamGeneration.formatTeams(tl[0])
-            await message.channel.send()
+            await message.channel.send(reply)
         
 
 @client.event
@@ -124,9 +124,6 @@ async def on_raw_reaction_add(payload):
     if mid == playerdb.getSetting(gid, "currentJoinId") and payload.member != client.user:
         if payload.emoji.name == '✅':
             print("User {} reacted".format(payload.member.name))
-        else:
-            print(payload.emoji.name)
-            print(payload.event_type)
             
 
 
@@ -143,6 +140,7 @@ def removeMember(m):
     member = m.author.name
     return playerdb.removePlayer(uid, gid, member)
 
+
 def steamURL(sid):
     return "https://steamcommunity.com/profiles/" + str(sid)
 
@@ -154,13 +152,11 @@ def userToPlayer(user_id, guild_id):
     p = Player(user_id, steam_id, member, guild_id)
     return p
 
+# checks if the author of the given message has the assigned admin role
 def checkPerm(message):
     adminRole = playerdb.getSetting(message.guild.id, "adminRole")
     userRoles = message.author.roles
-    print(adminRole)
-    print(userRoles)
     for role in userRoles:
-        print(role.name)
         if role.name == adminRole:
             return True
     return False
