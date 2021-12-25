@@ -55,19 +55,22 @@ async def on_message(message):
         await message.channel.send(reply)
 
     if message.content.startswith("$createinhouse"):
-        startmsg = 0
-        leagueId = playerdb.getSetting(message.guild.id, "leagueId")
-        if leagueId == 0:
-            await message.channel.send("No league currently configured for this server...")
-        elif leagueId == -1:
-            embed=discord.Embed(title="Inhouse Starting...", description="React to this message with a checkmark to join")
-            startmsg = await message.channel.send(embed=embed)
+        if checkPerm(message):
+            startmsg = 0
+            leagueId = playerdb.getSetting(message.guild.id, "leagueId")
+            if leagueId == 0:
+                await message.channel.send("No league currently configured for this server...")
+            elif leagueId == -1:
+                embed=discord.Embed(title="Inhouse Starting...", description="React to this message with a checkmark to join")
+                startmsg = await message.channel.send(embed=embed)
+            else:
+                embed=discord.Embed(title="Inhouse Starting for league: {}...".format(leagueId), description="React to this message with a checkmark to join")
+                startmsg = await message.channel.send(embed=embed)
+            if startmsg != 0:
+                playerdb.changeSetting(message.guild.id, "currentJoinId", startmsg.id)
+                await startmsg.add_reaction('✅')
         else:
-            embed=discord.Embed(title="Inhouse Starting for league: {}...".format(leagueId), description="React to this message with a checkmark to join")
-            startmsg = await message.channel.send(embed=embed)
-        if startmsg != 0:
-            playerdb.changeSetting(message.guild.id, "currentJoinId", startmsg.id)
-            await startmsg.add_reaction('✅')
+            await message.channel.send("You don't have permission to do that")
         
     if message.content.startswith("$setleague"):
         userInput = message.content.removeprefix("$setleague ")
@@ -80,6 +83,12 @@ async def on_message(message):
         playerdb.changeSetting(message.guild.id, "role", userInput)
         role = playerdb.getSetting(message.guild.id, "role")
         await message.channel.send("Role set to {}".format(role))
+
+    if message.content.startswith("$setadminrole"):
+        userInput = message.content.removeprefix("$setadminrole ")
+        playerdb.changeSetting(message.guild.id, "adminrole", userInput)
+        role = playerdb.getSetting(message.guild.id, "adminrole")
+        await message.channel.send("Administrator role set to {}".format(role))
 
     if message.content.startswith("$startinhouse"):
         channel = message.channel
@@ -107,7 +116,6 @@ async def on_message(message):
             reply = teamGeneration.formatTeams(tl[0])
             await message.channel.send()
         
-
 
 @client.event
 async def on_raw_reaction_add(payload):
@@ -145,5 +153,16 @@ def userToPlayer(user_id, guild_id):
     member = player[1]
     p = Player(user_id, steam_id, member, guild_id)
     return p
+
+def checkPerm(message):
+    adminRole = playerdb.getSetting(message.guild.id, "adminRole")
+    userRoles = message.author.roles
+    print(adminRole)
+    print(userRoles)
+    for role in userRoles:
+        print(role.name)
+        if role.name == adminRole:
+            return True
+    return False
 
 client.run(TOKEN)

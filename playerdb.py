@@ -8,8 +8,8 @@ def addGuildTable(guild_id):
     gid = "guild" + str(guild_id)
     settingsId = "settings" + str(guild_id)
     c.execute("CREATE TABLE IF NOT EXISTS {} (user_id integer, member text, steam_id integer, mmr_overide integer)".format(gid))
-    c.execute("CREATE TABLE IF NOT EXISTS {} (leagueId integer, currentJoinId integer, role text)".format(settingsId))
-    c.execute("INSERT INTO {} VALUES (?, ?, ?)".format(settingsId), (0, 0, ""))
+    c.execute("CREATE TABLE IF NOT EXISTS {} (leagueId integer, currentJoinId integer, role text, adminrole text)".format(settingsId))
+    c.execute("INSERT INTO {} VALUES (?, ?, ?, ?)".format(settingsId), (0, 0, "", ""))
     conn.commit()
 
 def addPlayer(user_id, steam_id, member, guild_id):
