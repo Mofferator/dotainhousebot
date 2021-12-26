@@ -9,7 +9,7 @@ def addGuildTable(guild_id):
     settingsId = "settings" + str(guild_id)
     matchesId = "matches" + str(guild_id)
     c.execute("CREATE TABLE IF NOT EXISTS {} (user_id integer, member text, steam_id integer, mmr_overide integer)".format(gid))
-    c.execute("CREATE TABLE IF NOT EXISTS {} (leagueId integer, currentJoinId integer, role text, adminrole text)".format(settingsId))
+    c.execute("CREATE TABLE IF NOT EXISTS {} (leagueId integer, currentJoinId integer, role text, adminrole text, resultsChannel)".format(settingsId))
     c.execute("""
     CREATE TABLE IF NOT EXISTS {}
     (matchId integer,
@@ -25,7 +25,7 @@ def addGuildTable(guild_id):
     player8 integer,
     player9 integer)
     """.format(matchesId))
-    c.execute("INSERT INTO {} VALUES (?, ?, ?, ?)".format(settingsId), (0, 0, "", ""))
+    c.execute("INSERT INTO {} VALUES (?, ?, ?, ?, ?)".format(settingsId), (0, 0, "", "", 0))
     conn.commit()
 
 def addPlayer(user_id, steam_id, member, guild_id):
