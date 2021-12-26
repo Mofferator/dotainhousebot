@@ -1,10 +1,11 @@
+from sqlite3.dbapi2 import apilevel
 import discord
-from discord import player
 from discord.ext import tasks
-import playerdb
+import playerdb, apifetch
 from player import Player
 import os
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 
 load_dotenv('.env')
@@ -54,6 +55,7 @@ def getUnrecorded(guild_id):
     for id in total:
         if id not in recorded:
             unrecorded.append(id)
+    return unrecorded
 
 
 
@@ -124,6 +126,7 @@ class MyClient(discord.Client):
                     startmsg = await message.channel.send(embed=embed)
                 if startmsg != 0:
                     playerdb.changeSetting(message.guild.id, "currentJoinId", startmsg.id)
+                    playerdb.changeSetting(message.guild.id, "currentJoinTime", startmsg.created_at.timestamp())
                     await startmsg.add_reaction('✅')
             else:
                 await message.channel.send("You don't have permission to do that")
@@ -147,6 +150,7 @@ class MyClient(discord.Client):
             await message.channel.send("Administrator role set to {}".format(role))
 
         if message.content.startswith("$startinhouse"):
+
             channel = message.channel
             joinMessageId = playerdb.getSetting(message.guild.id, "currentJoinId")
             joinMessage = await channel.fetch_message(joinMessageId)
@@ -189,9 +193,20 @@ class MyClient(discord.Client):
     #923548063539269652
     @tasks.loop(seconds=60) # task runs every 60 seconds
     async def scrapeMatches(self):
-        channel = client.get_channel(923548063539269652) # channel ID goes here
-        self.counter += 1
-        await channel.send(self.counter)
+        for guild in self.guilds:
+            guild_id = guild.id
+            joinMessageTime = playerdb.getSetting(guild_id, "currentJoinTime")
+            now = datetime.now().timestamp()
+            if now - int(joinMessageTime) < 86400:
+                unrecorded = getUnrecorded(guild_id)
+                for matchId in unrecorded:
+                    matchInfo = apifetch.getMatchInfo(matchId)
+                    playerdb.addMatch(guild_id, matchInfo[0], matchInfo[1], matchInfo[2])
+                    channel = self.get_channel(playerdb.getSetting(guild_id, "resultsChannel"))
+                    await channel.send("Match {} added to database".format(matchId))
+
+
+
 
     @scrapeMatches.before_loop
     async def before_my_task(self):
