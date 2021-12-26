@@ -161,8 +161,6 @@ class MyClient(discord.Client):
                     checkReaction = reaction
             users = await checkReaction.users().flatten()
             users.remove(client.user) # remove bot from list of reactors
-            for user in users:
-                print(user)
             if len(users) < 10:
                 await message.channel.send("Not enough players for an inhouse, please add {} more".format(10 - len(users)))
             elif len(users) > 10:
@@ -193,17 +191,18 @@ class MyClient(discord.Client):
     #923548063539269652
     @tasks.loop(seconds=60) # task runs every 60 seconds
     async def scrapeMatches(self):
-        for guild in self.guilds:
-            guild_id = guild.id
+        for g in self.guilds:
+            guild_id = g.id
             joinMessageTime = playerdb.getSetting(guild_id, "currentJoinTime")
             now = datetime.now().timestamp()
             if now - int(joinMessageTime) < 86400:
                 unrecorded = getUnrecorded(guild_id)
                 for matchId in unrecorded:
                     matchInfo = apifetch.getMatchInfo(matchId)
-                    playerdb.addMatch(guild_id, matchInfo[0], matchInfo[1], matchInfo[2])
-                    channel = self.get_channel(playerdb.getSetting(guild_id, "resultsChannel"))
-                    await channel.send("Match {} added to database".format(matchId))
+                    if matchInfo != 0:
+                        playerdb.addMatch(guild_id, matchInfo[0], matchInfo[1], matchInfo[2])
+                        channel = self.get_channel(playerdb.getSetting(guild_id, "resultsChannel"))
+                        await channel.send("Match {} added to database".format(matchId))
 
 
 

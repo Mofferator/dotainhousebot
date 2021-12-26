@@ -36,7 +36,6 @@ def addPlayer(user_id, steam_id, member, guild_id):
         conn.commit()
         return "Player {} added to database".format(member)
     else:
-        print(c.fetchall())
         return "Player {} already in database".format(member)
 
 def removePlayer(user_id, guild_id, member):
