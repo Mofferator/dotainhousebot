@@ -57,6 +57,26 @@ def getUnrecorded(guild_id):
             unrecorded.append(id)
     return unrecorded
 
+def formatMatch(matchInfo, guild_id):
+    matchId = matchInfo[0]
+    
+    if matchInfo[1] == 0:
+        winner = "Radiant"
+    else:
+        winner = "Dire"
+
+    leagueId = playerdb.getSetting(guild_id, "leagueId")
+
+    icon = "https://riki.dotabuff.com/leagues/" + str(leagueId) + "/icon.png"
+
+    l = matchInfo[3]
+
+
+    embed=discord.Embed(title="Match {}".format(matchId), url="https://dotabuff.com/matches/" + str(matchId), description="Winner: {}".format(winner), color=0xff0000)
+    embed.set_thumbnail(url=icon)
+    embed.add_field(name="Radiant", value="{}\n{}\n{}\n{}\n{}\n".format(l[0],l[1],l[2],l[3],l[4]), inline=True)
+    embed.add_field(name="Dire", value="{}\n{}\n{}\n{}\n{}\n".format(l[5],l[6],l[7],l[8],l[9]), inline=True)
+    return embed
 
 
 class MyClient(discord.Client):
@@ -202,9 +222,7 @@ class MyClient(discord.Client):
                     if matchInfo != 0:
                         playerdb.addMatch(guild_id, matchInfo[0], matchInfo[1], matchInfo[2])
                         channel = self.get_channel(playerdb.getSetting(guild_id, "resultsChannel"))
-                        await channel.send("Match {} added to database".format(matchId))
-
-
+                        await channel.send(embed=formatMatch(matchInfo, guild_id))
 
 
     @scrapeMatches.before_loop

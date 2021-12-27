@@ -37,6 +37,7 @@ def getMatchInfo(matchId):
     m = http.request("GET", "https://api.opendota.com/api/matches/" + str(matchId) + "/?api_key=" + str(KEY))
     match = json.loads(m.data)
     listOfPlayers = []
+    listOfNames = []
     if "match_id" in match:
         matchId = match["match_id"]
         if match["radiant_win"] == "true":
@@ -45,8 +46,14 @@ def getMatchInfo(matchId):
             winner = 0
         for x in match["players"]:
             listOfPlayers.append(x["account_id"])
-        return (matchId, winner, listOfPlayers)
+            listOfNames.append(x["personaname"])
+        if len(listOfPlayers) == 0:
+            http.request("POST", "https://api.opendota.com/api/request/" + str(matchId) + "?api_key=" + str(KEY))
+            return 0
+        return (matchId, winner, listOfPlayers, listOfNames)
     else:
+        print(matchId)
+        print(match)
         return 0
 
 if __name__ == "__main__":
