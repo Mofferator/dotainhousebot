@@ -7,6 +7,7 @@ class Player:
         self.steam_id = steam_id
         self.member = member
         self.guild_id = guild_id
+        self.mmr = 3000
         if len(playerdb.getPlayer(user_id, guild_id)) > 0 \
             and (playerdb.getMMROveride(guild_id, user_id) != 0):
             self.mmr = playerdb.getMMROveride(guild_id, user_id)

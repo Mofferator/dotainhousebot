@@ -78,6 +78,27 @@ def formatMatch(matchInfo, guild_id):
     embed.add_field(name="Dire", value="{}\n{}\n{}\n{}\n{}\n".format(l[5],l[6],l[7],l[8],l[9]), inline=True)
     return embed
 
+def formatTeamAssignments(team1, team2, guild_id):
+    numPlayers = len(team1)
+
+    string1 = ""
+    string2 = ""
+
+    leagueId = playerdb.getSetting(guild_id, "leagueId")
+
+    icon = "https://riki.dotabuff.com/leagues/" + str(leagueId) + "/icon.png"
+
+    for i in range(numPlayers):
+        string1 = string1 + "{}\n".format(team1[0].member)
+        string2 = string2 + "{}\n".format(team2[0].member)
+
+    embed=discord.Embed(title="Team Assignments", color=0xff0000)
+    embed.set_thumbnail(url=icon)
+    embed.add_field(name="Team 1", value=string1, inline=True)
+    embed.add_field(name="Team 2", value=string2, inline=True)
+
+    return embed
+
 
 class MyClient(discord.Client):
     def __init__(self, *args, **kwargs):
@@ -181,18 +202,18 @@ class MyClient(discord.Client):
                     checkReaction = reaction
             users = await checkReaction.users().flatten()
             users.remove(client.user) # remove bot from list of reactors
-            if len(users) < 10:
-                await message.channel.send("Not enough players for an inhouse, please add {} more".format(10 - len(users)))
-            elif len(users) > 10:
-                await message.channel.send("Too many players for an inhouse, please remove {} players".format(len(users) - 10))
-            else:
-                import teamGeneration
-                listOfPlayers = []
-                for user in users:
-                    listOfPlayers.append(userToPlayer(user.id, message.guild.id))
-                tl = teamGeneration.genteamlist(users)
-                reply = teamGeneration.formatTeams(tl[0])
-                await message.channel.send(reply)
+            #if len(users) < 10:
+                #await message.channel.send("Not enough players for an inhouse, please add {} more".format(10 - len(users)))
+            #elif len(users) > 10:
+                #await message.channel.send("Too many players for an inhouse, please remove {} players".format(len(users) - 10))
+            #else:
+            import teamGeneration
+            listOfPlayers = []
+            for user in users:
+                listOfPlayers.append(userToPlayer(user.id, message.guild.id))
+            tl = teamGeneration.genteamlist(listOfPlayers)
+            reply = teamGeneration.formatTeams(tl[0])
+            await message.channel.send(embed = formatTeamAssignments(tl[0][0], tl[0][1], message.guild.id))
         
         if message.content.startswith("$setresultschannel"):
             channelId = message.channel.id
@@ -220,7 +241,7 @@ class MyClient(discord.Client):
                 for matchId in unrecorded:
                     matchInfo = apifetch.getMatchInfo(matchId)
                     if matchInfo != 0:
-                        playerdb.addMatch(guild_id, matchInfo[0], matchInfo[1], matchInfo[2])
+                        playerdb.addMatch(guild_id, matchInfo[0], matchInfo[1], matchInfo[2], matchInfo[3])
                         channel = self.get_channel(playerdb.getSetting(guild_id, "resultsChannel"))
                         await channel.send(embed=formatMatch(matchInfo, guild_id))
 

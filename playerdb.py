@@ -74,14 +74,20 @@ def getListOfMatchIds(guild_id):
 
 
 
-def addMatch(guild_id, matchId, winner, LoP):
+def addMatch(guild_id, matchId, winner, LoP, LoN):
     if matchId not in getListOfMatchIds(guild_id):
         matchesId = "matches" + str(guild_id)
-        c.execute("INSERT INTO {} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)".format(matchesId), 
+        gid = "guild" + str(guild_id)
+        for steamId in LoP:
+            c.execute("SELECT * FROM {} WHERE steam_id = ?".format(gid), (steamId,))
+            if c.fetchall() == []:
+                addPlayer(0, steamId, LoN[LoP.index(steamId)], guild_id)
+            c.execute("INSERT INTO {} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)".format(matchesId), 
             (matchId, winner, LoP[0], LoP[1], LoP[2], LoP[3], LoP[4], LoP[5], LoP[6], LoP[7], LoP[8], LoP[9]))
         conn.commit()
     else:
         print("Match already recorded")
+
 
 if __name__ == "__main__":
     from player import Player
@@ -107,7 +113,11 @@ if __name__ == "__main__":
         player.add()
         LoIDs.append(player.steam_id)
 
-    addMatch(testGuild, 12345, 0, LoIDs)
-    addMatch(testGuild, 6783, 0, LoIDs)
+    LoN = []
+    for player in pool:
+        LoN.append(player.member)
+
+    addMatch(testGuild, 12345, 0, LoIDs, LoN)
+    addMatch(testGuild, 6783, 0, LoIDs, LoN)
 
     print(getListOfMatchIds(testGuild))

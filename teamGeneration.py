@@ -1,3 +1,4 @@
+from discord import team
 from player import Player
 
 def listcopy(lista, listb):
@@ -74,9 +75,11 @@ def printTeamList(listOfTeams):
 def formatTeams(teamlist):
     team1 = teamlist[0]
     team2 = teamlist[1]
-    print("Team1:\t\t\t\tTeam2:\n")
-    for i in range(5):
-        return "{}\t{}\t{}\t{}".format(team1[i].member, team1[i].mmr, team2[i].member, team2[i].mmr)
+    out = "Team1:\t\t\t\tTeam2:\n"
+    rows = len(team1)
+    for i in range(rows):
+        out = out + "{}\t{}\t\t\t{}\t{}\n".format(team1[i].member, team1[i].mmr, team2[i].member, team2[i].mmr)
+    return out
 
 def genteamlist(pool):
     poolsize = len(pool)

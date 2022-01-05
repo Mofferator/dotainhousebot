@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv('.env')
 KEY = os.getenv("OPENDOTAKEY")
+BEARERTOKEN = os.getenv("STRATZTOKEN")
 
 http = urllib3.PoolManager()
 
@@ -15,6 +16,11 @@ def getplayermmr(steamid):
     realmmr = mmr * 67
     return realmmr
 
+def GetPlayerName(steamId):
+    p = http.request("GET", "https://api.opendota.com/api/players/" + str(steamId) + "?api_key=" + str(KEY))
+    player = json.loads(p.data)
+    name = player["persona_name"]
+
 def getmatchidlist(leagueid):
     if __name__ == "__main__":
         print("fetching match records...\n")
@@ -23,7 +29,7 @@ def getmatchidlist(leagueid):
     "GET",
     "https://api.stratz.com/api/v1/league/{}/matches?include=Player&take=250".format(leagueid),
     headers={
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiJodHRwczovL3N0ZWFtY29tbXVuaXR5LmNvbS9vcGVuaWQvaWQvNzY1NjExOTgwNjg1NzA4OTYiLCJ1bmlxdWVfbmFtZSI6IkhhcHB5IE51dCIsIlN1YmplY3QiOiJkYjZjYjM1MC02ZTkzLTQ5YjEtOGQzOS1lMjU5Yzk3OGVlYjEiLCJTdGVhbUlkIjoiMTA4MzA1MTY4IiwibmJmIjoxNjM5MTYzMzUwLCJleHAiOjE2NzA2OTkzNTAsImlhdCI6MTYzOTE2MzM1MCwiaXNzIjoiaHR0cHM6Ly9hcGkuc3RyYXR6LmNvbSJ9.zWPQhM0b2-WfmUb1x14gl0fXRGszDSQUXbHqCNfdYRs"
+        "Authorization": "Bearer {}".format(BEARERTOKEN)
     }
     )
     idList = []
