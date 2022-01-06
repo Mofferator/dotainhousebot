@@ -1,4 +1,3 @@
-from sqlite3.dbapi2 import apilevel
 import discord
 from discord.ext import tasks
 import playerdb, apifetch
@@ -11,6 +10,7 @@ from datetime import datetime, timedelta
 load_dotenv('.env')
 TOKEN = os.getenv("TOKEN")
 
+# Adds the given discord member object to the database
 def addMember(m):
     uid = m.author.id
     sid = m.content.removeprefix("$addme ")
@@ -18,17 +18,18 @@ def addMember(m):
     guild_id = m.guild.id
     return playerdb.addPlayer(uid, sid, member, guild_id)
 
+# removes the given discord member object from the data base
 def removeMember(m):
     uid = m.author.id
     gid = m.guild.id
     member = m.author.name
     return playerdb.removePlayer(uid, gid, member)
 
-
+# NOT WORKING, USES STEAM32 INSTEAD OF 64, MAYBE CHANGE TO DOTABUFF URL INSTEAD
 def steamURL(sid):
     return "https://steamcommunity.com/profiles/" + str(sid)
 
-#converts a discord user object to a player object
+#converts a discord user object to a player object as per player.py
 def userToPlayer(user_id, guild_id):
     player = playerdb.getPlayer(user_id, guild_id)[0]
     steam_id = player[2]
@@ -37,6 +38,7 @@ def userToPlayer(user_id, guild_id):
     return p
 
 # checks if the author of the given message has the assigned admin role
+# admin role can be found in settings<guild_id> table
 def checkPerm(member, guild_id):
     adminRole = playerdb.getSetting(guild_id, "adminRole")
     userRoles = member.roles
@@ -46,17 +48,25 @@ def checkPerm(member, guild_id):
     return False
 
 # returns a list of unrecorded match ids for a given guild
+# An "unrecorded" ID is one which is not currently in the matches<guild_id> table in the database
+# RETURN: [INT MATCHID]
 def getUnrecorded(guild_id):
     import apifetch
     leagueId = playerdb.getSetting(guild_id, "leagueId")
-    recorded = playerdb.getListOfMatchIds(guild_id)
-    total = apifetch.getmatchidlist(leagueId)
+    recorded = playerdb.getListOfMatchIds(guild_id) # get list of recorded matches from the database
+    total = apifetch.getmatchidlist(leagueId) # Get list of total matches form STRATZ api 
     unrecorded = []
     for id in total:
         if id not in recorded:
             unrecorded.append(id)
     return unrecorded
 
+# Takes the match info and returns an html embed to be displayed by the bot
+
+# MATCH INFO: (INT MATCHID, INT WINNER, [INT STEAMID], [STRING NAME])
+# GUILD ID: INT
+
+# RETURN: EMBED OBJECT
 def formatMatch(matchInfo, guild_id):
     matchId = matchInfo[0]
     
@@ -78,6 +88,12 @@ def formatMatch(matchInfo, guild_id):
     embed.add_field(name="Dire", value="{}\n{}\n{}\n{}\n{}\n".format(l[5],l[6],l[7],l[8],l[9]), inline=True)
     return embed
 
+# Takes two lists of player (as per player.py) objects and a guild ID and formats it into a discord embed object to be displayed by the bot
+# TEAM1: [PLAYER PLAYER]
+# TEAM2: [PLAYER PLAYER]
+# GUILD_ID: INT GUILD_ID
+
+# RETURN: DISCORD EMBED OBJECT
 def formatTeamAssignments(team1, team2, guild_id):
     numPlayers = len(team1)
 
@@ -99,7 +115,7 @@ def formatTeamAssignments(team1, team2, guild_id):
 
     return embed
 
-
+# Main class, api is managed from here
 class MyClient(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,27 +124,35 @@ class MyClient(discord.Client):
 
         self.scrapeMatches.start()
 
-    #@client.event
     async def on_ready(self):
         print('We have logged in as {0.user}'.format(client))
 
-    #@client.event
     async def on_guild_join(self, guild):
         playerdb.addGuildTable(guild.id)
 
-    #@client.event
     async def on_message(self, message):
+
+        # ignore messages from the bot
         if message.author == client.user:
             return
 
+        # Hello test message
+        # INPUT: "$hello"
+        # OUTCOME: Bot responds with "Hello!"
         if message.content.startswith('$hello'):
             print(message.channel.id)
             await message.channel.send('Hello!')
 
+        # Initialise the server in the bots database
+        # INPUT: "$addplayers"
+        # OUTCOME: create database tables for the server
         if message.content.startswith('$addplayers'):
             sent = await message.channel.send('React to this message to be added to the inhouse role')
             playerdb.addGuildTable(message.guild.id)
         
+        # Add given player to the database
+        # INPUT: "$addme STEAM32_ACCOUNT_ID"
+        # OUTCOME: The message author is linked to the given steam id in the database, user is also given the assigned inhouse role
         if message.content.startswith('$addme'):
             reply = addMember(message)
             member = message.author
@@ -137,6 +161,9 @@ class MyClient(discord.Client):
             await message.channel.send(reply)
             await member.add_roles(role)
 
+        # Removes given player from the database
+        # INPUT: "$removeme"
+        # OUTCOME: Removes the message author from the database, also removes the assigned role
         if message.content.startswith('$removeme'):
             reply = removeMember(message)
             member = message.author
@@ -145,6 +172,9 @@ class MyClient(discord.Client):
             await message.channel.send(reply)
             await member.remove_roles(role)
 
+        # CURRENTLY DOESN'T WORK
+        # INPUT: "$steam"
+        # OUTCOME: Displays the users steam URL
         if message.content.startswith('$steam'):
             results = playerdb.getPlayer(message.author.id, message.guild.id)
             if results != []:
@@ -153,6 +183,9 @@ class MyClient(discord.Client):
                 reply = "Player not found"
             await message.channel.send(reply)
 
+        # Creates an inhouse session in the server. Can only be issued by users with the assigned admin role
+        # INPUT: "$createinhouse"
+        # OUTCOME: Sends a message the players can react to, to be added to the inhouse. The inhouse can then be started with $startinhouse
         if message.content.startswith("$createinhouse"):
             if checkPerm(message.author, message.guild.id):
                 startmsg = 0
@@ -172,24 +205,37 @@ class MyClient(discord.Client):
             else:
                 await message.channel.send("You don't have permission to do that")
             
+        # Sets the league to the given value for the server
+        # INPUT: "$setleague LEAGUE_ID"
+        # OUTCOME: changes the league setting in the SETTING<guild_id> table to the given value
         if message.content.startswith("$setleague"):
             userInput = message.content.removeprefix("$setleague ")
             playerdb.changeSetting(message.guild.id, "leagueId", userInput)
             leagueId = playerdb.getSetting(message.guild.id, "leagueId")
             await message.channel.send("League set to {}".format(leagueId))
 
+        # Sets the inhouse role to the given value
+        # INPUT: "$setrole ROLE_NAME"
+        # OUTCOME: Changes the role setting in the SETTING<guild_id> table to the given value
         if message.content.startswith("$setrole"):
             userInput = message.content.removeprefix("$setrole ")
             playerdb.changeSetting(message.guild.id, "role", userInput)
             role = playerdb.getSetting(message.guild.id, "role")
             await message.channel.send("Role set to {}".format(role))
 
+        # Sets the admin role to the given value
+        # INPUT: "$setadminrole ROLE_NAME"
+        # OUTCOME: Changes the admin role setting in the SETTING<guild_id> table to the given value
         if message.content.startswith("$setadminrole"):
             userInput = message.content.removeprefix("$setadminrole ")
             playerdb.changeSetting(message.guild.id, "adminrole", userInput)
             role = playerdb.getSetting(message.guild.id, "adminrole")
             await message.channel.send("Administrator role set to {}".format(role))
 
+        # Starts the inhouse by locking in players and generating balanced teams
+        # INPUT: "$startinhouse"
+        # OUTCOME: Collects the users who reacted and generates balanced teams. Creates a new message displaying the teams with a button to move people
+        #          into voice channels
         if message.content.startswith("$startinhouse"):
 
             channel = message.channel
@@ -217,11 +263,17 @@ class MyClient(discord.Client):
             playerdb.changeSetting(message.guild.id, "currentStartId", sentMessage.id)
             await sentMessage.add_reaction('✅')
         
+        # Sets the results channel to the channel the message was posted in
+        # INPUT: "$setresultschannel"
+        # OUTCOME: Sets the results channel to the channel the message was posted in
         if message.content.startswith("$setresultschannel"):
             channelId = message.channel.id
             guildId = message.guild.id
             playerdb.changeSetting(guildId, "resultsChannel", channelId)
 
+        # Sets the voice channel for team1 to the channel the user is currently connected to
+        # INPUT: "$setteam1channel"
+        # OUTCOME: Sets the team1channel setting to the channel ID that the command issuer is connected to 
         if message.content.startswith("$setteam1channel"):
             from playerdb import changeSetting
             if checkPerm(message.author, message.guild.id):
@@ -230,6 +282,9 @@ class MyClient(discord.Client):
             else:
                 await message.channel.send("You don't have permission to do that")
 
+        # Sets the voice channel for team2 to the channel the user is currently connected to
+        # INPUT: "$setteam2channel"
+        # OUTCOME: Sets the team2channel setting to the channel ID that the command issuer is connected to
         if message.content.startswith("$setteam2channel"):
             from playerdb import changeSetting
             if checkPerm(message.author, message.guild.id):
