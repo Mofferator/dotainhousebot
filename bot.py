@@ -37,9 +37,9 @@ def userToPlayer(user_id, guild_id):
     return p
 
 # checks if the author of the given message has the assigned admin role
-def checkPerm(message):
-    adminRole = playerdb.getSetting(message.guild.id, "adminRole")
-    userRoles = message.author.roles
+def checkPerm(member, guild_id):
+    adminRole = playerdb.getSetting(guild_id, "adminRole")
+    userRoles = member.roles
     for role in userRoles:
         if role.name == adminRole:
             return True
@@ -154,7 +154,7 @@ class MyClient(discord.Client):
             await message.channel.send(reply)
 
         if message.content.startswith("$createinhouse"):
-            if checkPerm(message):
+            if checkPerm(message.author, message.guild.id):
                 startmsg = 0
                 leagueId = playerdb.getSetting(message.guild.id, "leagueId")
                 if leagueId == 0:
@@ -213,23 +213,75 @@ class MyClient(discord.Client):
                 listOfPlayers.append(userToPlayer(user.id, message.guild.id))
             tl = teamGeneration.genteamlist(listOfPlayers)
             reply = teamGeneration.formatTeams(tl[0])
-            await message.channel.send(embed = formatTeamAssignments(tl[0][0], tl[0][1], message.guild.id))
+            sentMessage = await message.channel.send(embed = formatTeamAssignments(tl[0][0], tl[0][1], message.guild.id))
+            playerdb.changeSetting(message.guild.id, "currentStartId", sentMessage.id)
+            await sentMessage.add_reaction('✅')
         
         if message.content.startswith("$setresultschannel"):
             channelId = message.channel.id
             guildId = message.guild.id
             playerdb.changeSetting(guildId, "resultsChannel", channelId)
-            
+
+        if message.content.startswith("$setteam1channel"):
+            from playerdb import changeSetting
+            if checkPerm(message.author, message.guild.id):
+                channelId = message.author.voice.channel.id
+                changeSetting(message.guild.id, "team1Channel", channelId)
+            else:
+                await message.channel.send("You don't have permission to do that")
+
+        if message.content.startswith("$setteam2channel"):
+            from playerdb import changeSetting
+            if checkPerm(message.author, message.guild.id):
+                channelId = message.author.voice.channel.id
+                changeSetting(message.guild.id, "team2Channel", channelId)
+            else:
+                await message.channel.send("You don't have permission to do that")
 
     #@client.event
     async def on_raw_reaction_add(self, payload):
         mid = payload.message_id
         gid = payload.guild_id
-        if mid == playerdb.getSetting(gid, "currentJoinId") and payload.member != client.user:
+        guild = client.get_guild(gid)
+        channel = guild.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        print(guild)
+        if mid == playerdb.getSetting(gid, "currentStartId") and payload.member != client.user:
             if payload.emoji.name == '✅':
-                print("User {} reacted".format(payload.member.name))
+                if checkPerm(payload.member, gid):
+                    import teamGeneration
+                    joinMessageId = playerdb.getSetting(gid, "currentJoinId")
+                    joinMessage = await channel.fetch_message(joinMessageId)
+                    listOfReactions = joinMessage.reactions # get all reactions from inhouse creation message
+                    checkReaction = 0
+                    for reaction in listOfReactions:
+                        if reaction.emoji == '✅': # find only the checkmark reactions
+                            checkReaction = reaction
+                    users = await checkReaction.users().flatten()
+                    users.remove(client.user)
+                    listOfPlayers = []
+                    for user in users:
+                        listOfPlayers.append(userToPlayer(user.id, gid))
+                    tl = teamGeneration.genteamlist(listOfPlayers)
+                    team1ChannelID = playerdb.getSetting(gid, "team1Channel")
+                    team2ChannelID = playerdb.getSetting(gid, "team2Channel")
+                    team1Channel = guild.get_channel(team1ChannelID)
+                    team2Channel = guild.get_channel(team2ChannelID)
+                    members = []
+                    for user in users:
+                        member = await guild.fetch_member(user.id)
+                        members.append(member)
+                    for player in tl[0][0]:
+                        for user in members:
+                            if player.user_id == user.id:
+                                await user.move_to(team1Channel)
+                    for player in tl[0][1]:
+                        for user in members:
+                            if player.user_id == user.id:
+                                await user.move_to(team2Channel)
 
-    #923548063539269652
+
+
     @tasks.loop(seconds=60) # task runs every 60 seconds
     async def scrapeMatches(self):
         for g in self.guilds:
